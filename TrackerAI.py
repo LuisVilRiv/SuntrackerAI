@@ -1,5 +1,5 @@
 # Importación de librerías necesarias
-import RPi.GPIO as GPIO            # Control de pines GPIO de la Raspberry Pi
+import RPi.GPIO as GPIO            # Control de pines GPIO de la Orange Pi
 import board                      # Definición de pines de la placa
 import busio                      # Comunicación I²C
 import adafruit_ads1x15.ads1115 as ADS    # Driver del ADC ADS1115
