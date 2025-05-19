@@ -1,30 +1,27 @@
-# Proyecto: Sistema de Monitorización y Control de Paneles Solares
+# Proyecto Solar Monitoring
 
-Este repositorio incluye dos componentes principales:
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-1. **Generación de Informes de Mantenimiento**
+Este repositorio contiene dos herramientas para optimizar la operación de instalaciones solares fotovoltaicas:
 
-   * Script en Python que consume la API de AEMET para obtener el pronóstico meteorológico diario de Granada.
-   * Analiza parámetros como temperatura, precipitación, viento y radiación UV para evaluar el nivel de riesgo sobre paneles solares.
-   * Envía un informe por correo electrónico usando Poste.io.
+1. **Informe de Mantenimiento Meteorológico**
+   Obtiene datos de pronóstico diario de AEMET para Granada, evalúa riesgos asociados (temperatura, precipitación, viento, radiación UV) y genera un informe automático por correo.
 
-2. **Tracker Solar Automatizado**
-
-   * Aplicación en Python para Raspberry Pi con un ADC ADS1115 y dos sensores LDR.
-   * Control de motor DC mediante GPIO para orientar los paneles hacia la luz.
-   * Incluye un modelo TensorFlow Lite para la toma de decisiones de movimiento.
+2. **Tracker Solar Automático**
+   Sistema embebido en Raspberry Pi que, mediante dos sensores LDR y un ADC ADS1115, orienta paneles solares hacia la luz óptima usando un motor DC y un modelo TFLite.
 
 ---
 
 ## Índice
 
 * [Requisitos](#requisitos)
-* [Instalación](#instalaci%C3%B3n)
-* [Configuración](#configuraci%C3%B3n)
+* [Instalación](#instalación)
+* [Configuración](#configuración)
 * [Uso](#uso)
 
   * [Informe de Mantenimiento](#informe-de-mantenimiento)
-  * [Tracker Solar](#tracker-solar)
+  * [Sistema Tracker Solar](#sistema-tracker-solar)
+* [Ejemplos de Salida](#ejemplos-de-salida)
 * [Estructura del Proyecto](#estructura-del-proyecto)
 * [Licencia](#licencia)
 
@@ -32,64 +29,74 @@ Este repositorio incluye dos componentes principales:
 
 ## Requisitos
 
-* Python 3.7+
-* Raspberry Pi (para el tracker solar)
-* Sensor ADC ADS1115 y dos LDR
-* Motor DC con driver compatible (por ejemplo, puente H)
-* Credenciales API:
+* **Hardware**
 
-  * AEMET\_API\_KEY
-  * POSTE\_API\_KEY
+  * (Solo Tracker) Raspberry Pi con pines GPIO libres.
+  * ADC ADS1115 y dos LDR (Light Dependent Resistors).
+  * Motor DC + driver (p. ej. puente H) compatible con PWM.
 
-Librerías Python:
+* **Software**
 
-```bash
-pip install requests python-dotenv adafruit-circuitpython-ads1x15 RPi.GPIO tensorflow numpy
-```
+  * Python 3.7+
+  * Paquetes Python:
+
+    ```bash
+    pip install requests python-dotenv adafruit-circuitpython-ads1x15 RPi.GPIO tensorflow numpy
+    ```
+
+* **APIs**
+
+  * Clave AEMET: para acceso a pronóstico meteorológico.
+  * Clave Poste.io: para envío de emails.
 
 ---
 
 ## Instalación
 
-1. Clona el repositorio:
-
-   ```bash
-   ```
-
-git clone [https://github.com/tu\_usuario/solar-monitoring.git](https://github.com/tu_usuario/solar-monitoring.git)
+```bash
+# Clonar el repositorio
+git clone https://github.com/tu_usuario/solar-monitoring.git
 cd solar-monitoring
 
-````
-2. Crea un entorno virtual y actívalo:
-   ```bash
+# Crear y activar entorno virtual
 python3 -m venv venv
 source venv/bin/activate
-````
 
-3. Instala dependencias:
-
-   ```bash
-   ```
-
+# Instalar dependencias
 pip install -r requirements.txt
-
-````
+```
 
 ---
 
 ## Configuración
 
-1. Crea un fichero `.env` en la raíz con tus claves:
+1. **Variables de entorno**
+   En la raíz, crea un archivo `.env` con:
+
    ```env
-AEMET_API_KEY=tu_api_key_aemet
-POSTE_API_KEY=tu_api_key_poste
-````
+   AEMET_API_KEY=TU_API_KEY_AEMET
+   POSTE_API_KEY=TU_API_KEY_POSTE
+   ```
 
-2. Conecta el hardware (solo para el tracker):
+2. **Conexiones eléctricas**
 
-   * **ADS1115**: SDA → GPIO2 (SDA), SCL → GPIO3 (SCL), VCC → 3.3V, GND → GND.
-   * **LDRs**: Conecta cada LDR a P0 y P1 del ADS1115 con la resistencia de pull-down.
-   * **Motor**: IN1 → GPIO18, IN2 → GPIO23, EN → GPIO24 (PWM).
+   * **ADS1115 ↔ Raspberry Pi**:
+
+     * SDA → GPIO2 (SDA)
+     * SCL → GPIO3 (SCL)
+     * VCC → 3.3 V
+     * GND → GND
+
+   * **Sensores LDR**:
+
+     * LDR1 → ADS1115 canal P0 (serie con resistencia pull-down de 10 kΩ a GND)
+     * LDR2 → ADS1115 canal P1 (serie con resistencia pull-down similar)
+
+   * **Motor DC**:
+
+     * IN1 → GPIO18
+     * IN2 → GPIO23
+     * EN  → GPIO24 (PWM)
 
 ---
 
@@ -97,49 +104,88 @@ POSTE_API_KEY=tu_api_key_poste
 
 ### Informe de Mantenimiento
 
-1. Define destinatario y asunto en el código o variable de entorno.
-2. Ejecuta el script:
+1. Ajusta `DESTINATARIO` y `CONCEPTO` en `informe_mantenimiento.py` (o via variables de entorno en el script).
+2. Ejecuta:
 
    ```bash
+   python informe_mantenimiento.py
    ```
+3. El script mostrará por consola:
 
-python informe\_mantenimiento.py
+   * Fecha y hora de análisis.
+   * Nivel de riesgo (Bajo, Moderado, Alto, Crítico).
+   * Parámetros medidos y recomendaciones.
 
-````
-3. El script mostrará en consola el informe y enviará el correo.
+   Y enviará un email con el informe en HTML.
 
-### Tracker Solar
+### Sistema Tracker Solar
 
-1. Asegúrate de tener las conexiones GPIO y ADC correctamente montadas.  
+1. Verifica las conexiones GPIO y sensores.
 2. Ejecuta el tracker:
+
    ```bash
-python tracker_solar.py
-````
+   python tracker_solar.py
+   ```
+3. En pantalla verás:
 
-3. El sistema leerá los sensores LDR, decidirá movimiento y ajustará la orientación del panel.
+   * Ángulo actual del panel.
+   * Acción tomada (girar izquierda/derecha/esperar).
 
-Para recopilar datos en `data.csv` y reentrenar el modelo:
+Para recopilar datos y reentrenar el modelo TFLite:
 
 ```bash
-# Durante la ejecución el archivo data.csv se irá llenando
+# Ejecuta el tracker durante al menos 30 min.
+# Luego, reentrena:
 python -c "from tracker_solar import entrenar_modelo; entrenar_modelo()"
+```
+
+---
+
+## Ejemplos de Salida
+
+**Informe de Mantenimiento**:
+
+```json
+{
+  "fecha_analisis": "2025-05-19T10:00:00",
+  "nivel_riesgo": "Moderado",
+  "parametros": {
+    "temperatura_max": 37,
+    "precipitacion": 10,
+    "viento_velocidad": 15,
+    "radiacion_uv": 9
+  },
+  "recomendaciones": [
+    "Posible limpieza natural de paneles",
+    "Verificar degradación materiales"
+  ]
+}
+```
+
+**Tracker Solar (consola)**:
+
+```
+Posición: 91° → Girando izquierda, PWM=50%
+Posición: 90° → En posición óptima, PWM=0%
+...
 ```
 
 ---
 
 ## Estructura del Proyecto
 
-```plaintext
-├── datos/
-│   └── data.csv                # Datos recolectados por el tracker
-├── informe_mantenimiento.py    # Script de generación y envío de informes
-├── tracker_solar.py            # Script del tracker automático
-├── requirements.txt            # Dependencias del proyecto
-└── README.md                   # Esta documentación
+```
+solar-monitoring/
+├── datos/                    # Datos históricos (data.csv)
+├── informe_mantenimiento.py  # Script de análisis y envío de email
+├── tracker_solar.py          # Lógica del tracker y recopilación de datos
+├── requirements.txt          # Dependencias Python
+├── README.md                 # Documentación (este archivo)
+└── LICENSE                   # Licencia MIT
 ```
 
 ---
 
 ## Licencia
 
-Este proyecto está bajo la Licencia MIT. Consulta el archivo `LICENSE` para más detalles.
+Este proyecto se distribuye bajo la Licencia MIT. Consulta `LICENSE` para más detalles.
