@@ -4,28 +4,28 @@ import requests
 from datetime import datetime
 from dotenv import load_dotenv
 
-# Cargar variables de entorno
+# Cargar variables de entorno desde .env
 load_dotenv()
 
-# Configuración global
-AEMET_API_KEY = os.getenv('AEMET_API_KEY', 'eyJhbGci...')
-POSTE_API_KEY = os.getenv('POSTE_API_KEY', 'tu_poste_key')
-DESTINATARIO = "tucorreo@gmail.com"
-CONCEPTO = "Informe de mantenimiento paneles solares - Granada"
+# Configuración global de claves y destinatario
+AEMET_API_KEY  = os.getenv('AEMET_API_KEY', 'eyJhbGci...')   # Clave API AEMET
+POSTE_API_KEY  = os.getenv('POSTE_API_KEY', 'tu_poste_key')  # Clave API Poste.io
+DESTINATARIO   = "tucorreo@gmail.com"                       # Email receptor
+CONCEPTO       = "Informe de mantenimiento paneles solares - Granada"
 
 def obtener_datos_aemet():
-    """Obtiene datos de pronóstico diario para Granada de la API AEMET"""
+    """Obtiene datos de pronóstico diario para Granada desde la API AEMET."""
     url = (
         f"https://opendata.aemet.es/opendata/api/prediccion/"
         f"especifica/municipio/diaria/18087?api_key={AEMET_API_KEY}"
     )
     try:
-        # Primer request para obtener URL de datos
+        # 1. Solicitar URL de datos
         response = requests.get(url)
         response.raise_for_status()
         datos_url = response.json()['datos']
 
-        # Segundo request para datos reales
+        # 2. Descarga de datos reales de pronóstico
         datos_response = requests.get(datos_url)
         datos_response.raise_for_status()
         return datos_response.json()
@@ -33,74 +33,71 @@ def obtener_datos_aemet():
     except Exception as e:
         raise Exception(f"Error API AEMET: {str(e)}")
 
-
 def analizar_riesgo(datos):
-    """Evalúa condiciones meteorológicas y genera recomendaciones"""
+    """Evalúa condiciones meteorológicas y devuelve nivel de riesgo y recomendaciones."""
     try:
-        # Extracción de parámetros clave
+        # Extraer pronóstico del primer día
         dia = datos[0]['prediccion']['dia'][0]
         parametros = {
-            'temperatura_max': dia['temperatura']['maxima'],
-            'precipitacion': dia['probPrecipitacion'][0]['value'],
-            'viento_velocidad': dia['viento'][0]['velocidad'],
-            'radiacion_uv': dia['uvMax']
+            'temperatura_max': dia['temperatura']['maxima'],        # °C
+            'precipitacion':    dia['probPrecipitacion'][0]['value'],  # %
+            'viento_velocidad': dia['viento'][0]['velocidad'],     # km/h
+            'radiacion_uv':     dia['uvMax']                       # Índice UV
         }
 
-        # Sistema de puntuación de riesgo
+        # Inicializar variables de puntuación
         riesgo = 0
         recomendaciones = []
 
-        # Lógica de evaluación (Reglas de negocio)
-        # Temperatura (Componentes eléctricos)
+        # Evaluar temperatura
         if parametros['temperatura_max'] > 40:
             riesgo += 2
         elif parametros['temperatura_max'] > 35:
             riesgo += 1
 
-        # Precipitación (Erosión/Limpieza)
+        # Evaluar precipitación
         if parametros['precipitacion'] > 30:
             riesgo += 2
             recomendaciones.append("Posible limpieza natural de paneles")
         elif parametros['precipitacion'] > 5:
             riesgo += 1
 
-        # Viento (Daños físicos)
+        # Evaluar viento
         if parametros['viento_velocidad'] > 40:
             riesgo += 2
             recomendaciones.append("Verificar anclajes y estructuras")
         elif parametros['viento_velocidad'] > 25:
             riesgo += 1
 
-        # Radiación UV (Degradación)
+        # Evaluar radiación UV
         if parametros['radiacion_uv'] > 8:
             riesgo += 1
-            recomendaciones.append("Verificar degradación materiales")
+            recomendaciones.append("Verificar degradación de materiales")
 
-        # Clasificación final de riesgo
+        # Determinar nivel de riesgo a partir de la puntuación
         niveles_riesgo = [
-            (2, "Bajo"),
-            (4, "Moderado"),
-            (6, "Alto"),
+            (2,         "Bajo"),
+            (4,         "Moderado"),
+            (6,         "Alto"),
             (float('inf'), "Crítico"),
         ]
-        nivel = next(n[1] for n in niveles_riesgo if riesgo <= n[0])
+        nivel = next(label for lim, label in niveles_riesgo if riesgo <= lim)
 
         return {
-            'fecha_analisis': datetime.now().isoformat(),
-            'nivel_riesgo': nivel,
-            'parametros': parametros,
+            'fecha_analisis': datetime.now().isoformat(),  # Marca temporal ISO
+            'nivel_riesgo':   nivel,
+            'parametros':     parametros,
             'recomendaciones': recomendaciones
         }
 
     except KeyError as e:
         raise Exception(f"Datos API incompletos: {str(e)}")
 
-
 def generar_cuerpo_email(data):
-    """Crea plantilla HTML para el correo electrónico"""
+    """Construye el cuerpo HTML del email con resultados del análisis."""
     return f"""
     <h1>Informe de mantenimiento</h1>
-    <p>Nivel de riesgo: {data['nivel_riesgo']}</p>
+    <p><strong>Nivel de riesgo:</strong> {data['nivel_riesgo']}</p>
     <h3>Recomendaciones:</h3>
     <ul>
         {"".join(f"<li>{r}</li>" for r in data['recomendaciones'])}
@@ -109,16 +106,16 @@ def generar_cuerpo_email(data):
     """
 
 def enviar_por_poste(data_json):
-    """Envía el informe por email usando Poste.io"""
+    """Envía el informe por email usando la API de Poste.io."""
     url = "http://localhost:8080/api/v1/send"
     headers = {
-        "Content-Type": "application/json",
+        "Content-Type":     "application/json",
         "X-Postie-API-Key": POSTE_API_KEY
     }
     payload = {
-        "to": DESTINATARIO,
+        "to":      DESTINATARIO,
         "subject": CONCEPTO,
-        "body": generar_cuerpo_email(data_json)
+        "body":    generar_cuerpo_email(data_json)
     }
     try:
         response = requests.post(url, json=payload, headers=headers)
@@ -127,26 +124,24 @@ def enviar_por_poste(data_json):
     except Exception as e:
         raise Exception(f"Error enviando email: {str(e)}")
 
-
 def main():
-    """Orquestador principal del proceso"""
+    """Orquestador principal: obtiene datos, analiza riesgo y envía informe."""
     try:
-        # Pipeline de ejecución
-        datos_crudos = obtener_datos_aemet()
-        analisis = analizar_riesgo(datos_crudos)
-        informe_final = {
+        datos_crudos    = obtener_datos_aemet()      # Paso 1: datos meteorológicos
+        analisis       = analizar_riesgo(datos_crudos)  # Paso 2: análisis de riesgo
+        informe_final  = {
             "destinatario": DESTINATARIO,
-            "concepto": CONCEPTO,
+            "concepto":     CONCEPTO,
             **analisis
         }
 
+        # Paso 3: envío y log de resultado
         if enviar_por_poste(informe_final):
             print("Informe generado y enviado:")
             print(json.dumps(informe_final, indent=2))
 
     except Exception as e:
         print(f"Error crítico: {str(e)}")
-
 
 if __name__ == "__main__":
     main()
