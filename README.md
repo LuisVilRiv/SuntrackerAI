@@ -8,7 +8,7 @@ Este repositorio contiene dos herramientas para optimizar la operación de insta
    Obtiene datos de pronóstico diario de AEMET para Granada, evalúa riesgos asociados (temperatura, precipitación, viento, radiación UV) y genera un informe automático por correo.
 
 2. **Tracker Solar Automático**
-   Sistema embebido en Raspberry Pi que, mediante dos sensores LDR y un ADC ADS1115, orienta paneles solares hacia la luz óptima usando un motor DC y un modelo TFLite.
+   Sistema embebido en Orange Pi que, mediante dos sensores LDR y un ADC ADS1115, orienta paneles solares hacia la luz óptima usando un motor DC y un modelo TFLite.
 
 ---
 
@@ -31,7 +31,7 @@ Este repositorio contiene dos herramientas para optimizar la operación de insta
 
 * **Hardware**
 
-  * (Solo Tracker) Raspberry Pi con pines GPIO libres.
+  * (Solo Tracker) Orange Pi con pines GPIO libres.
   * ADC ADS1115 y dos LDR (Light Dependent Resistors).
   * Motor DC + driver (p. ej. puente H) compatible con PWM.
 
