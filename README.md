@@ -55,7 +55,7 @@ Este repositorio contiene dos herramientas para optimizar la operación de insta
 
 ```bash
 # Clonar el repositorio
-git clone https://github.com/tu_usuario/solar-monitoring.git
+git clone https://github.com/tu_usuario/solar-monitoring.git](https://github.com/LuisVilRiv/SuntrackerAI
 cd solar-monitoring
 
 # Crear y activar entorno virtual
